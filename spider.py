@@ -1,10 +1,8 @@
 import configparser
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.touch_actions import TouchActions
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import random
 import time
 
@@ -23,64 +21,67 @@ class SeleniumSpider():
         options.add_argument('lang=zh-tw.UTF-8')
         options.add_experimental_option('mobileEmulation', mobileEmulation)
         self.driver = webdriver.Chrome(
-            executable_path=chrome_path, chrome_options=options)
+            executable_path=chrome_path, options=options)
 
     def login(self):
         self.driver.set_window_position(0, 0)  # 瀏覽器位置
         self.driver.set_window_size(375, 900)  # 瀏覽器大小
         self.driver.implicitly_wait(10)  # seconds
         self.driver.get(
-            "https://discuss.appium.io/t/how-to-use-touchaction-for-press-move-hold-release-gesture/21000/4")
+            # "https://awwapp.com/#")
+            "https://h5.waimai.meituan.com/login")
 
         phone = self.config.get("option", "phone")
         phoneNumInput = self.driver.find_element_by_xpath(
             '//*[@id="phoneNumInput"]')
         phoneNumInput.send_keys(phone)
 
-        sendCodeBtn = self.driver.find_element_by_xpath(
-            '//*[@id="sendCodeBtn"]')
-        sendCodeBtn.click()
-        yodaBox = self.driver.find_element_by_xpath('//*[@id="yodaBox"]')
-        loc = yodaBox.location
-        action = TouchActions(self.driver)
-        action.tap_and_hold(loc['x']+2, loc['y'] -
-                            2).move(100, 0).release(100, 0).perform()
-        # action.flick(0, '100').perform()
-        # action.perform()
-        print(loc['x'])
-        # action.tap_and_hold(loc['x']+2, loc['y']-2).perform()
-
-        # track_list = self.get_track(800)
-        # self.verify_action()
+        self.verify_action()
 
     def get_track(self, distance):
         track = []
-        speed = []
         current = 0
-        mid = distance*3/4
+        mid = distance*3/5
         t = random.randint(2, 3)/10
         v = 0
         while current < distance:
             if current < mid:
-                a = 2
+                a = 3
             else:
-                a = -3
+                a = -2
             v0 = v
             v = v0+a*t
             move = v0*t+1/2*a*t*t
             current += move
             track.append(round(move))
-            speed.append(round(v))
-        return [track, speed]
+        return track
 
     def verify_action(self):
-        yodaBox = self.driver.find_element_by_xpath('//*[@id="yodaBox"]')
-        action = TouchActions(self.driver)
-        track_list = self.get_track(800)
+        try:
+            element = self.driver.find_element_by_xpath(
+                '//*[@id="iLoginCounDown"]')
+        except NoSuchElementException:
+            print("No element found")
 
-        for index, track in enumerate(track_list[0]):
-            action.move(
-                yodaBox, track, 0, track_list[1][index]).perform()
+            sendCodeBtn = self.driver.find_element_by_xpath(
+                '//*[@id="sendCodeBtn"]')
+            sendCodeBtn.click()
+            time.sleep(1)
+            yodaBox = self.driver.find_element_by_xpath('//*[@id="yodaBox"]')
+            touch = TouchActions(self.driver)
+            track_list = self.get_track(265)
+            print(track_list)
+            loc = yodaBox.location
+            x = loc['x']+10
+            y = loc['y']+10
+            touch.tap_and_hold(x, y)
+            for track in track_list:
+                x += track
+                touch.move(x+track, y)
+
+            touch.release(x, y).perform()
+            time.sleep(1)
+            self.verify_action()
 
 
 if __name__ == '__main__':
